@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Walkable Community</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
+
+<script>
+  // Scene setup
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xaedff7);
+
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Lights
+  const sun = new THREE.DirectionalLight(0xffffff, 1);
+  sun.position.set(100, 200, 100);
+  scene.add(sun);
+
+  const ambient = new THREE.AmbientLight(0x404040, 2);
+  scene.add(ambient);
+
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+  const groundMat = new THREE.MeshPhongMaterial({color: 0x55aa55});
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  // River
+  const waterGeo = new THREE.PlaneGeometry(400, 50);
+  const waterMat = new THREE.MeshPhongMaterial({color: 0x3399ff, transparent: true, opacity: 0.8});
+  const water = new THREE.Mesh(waterGeo, waterMat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0, 0.05, 0);
+  scene.add(water);
+
+  // Skyscrapers
+  function createBuilding(x, z, h) {
+    const geo = new THREE.BoxGeometry(20, h, 20);
+    const mat = new THREE.MeshPhongMaterial({color: 0xffffff * Math.random()});
+    const b = new THREE.Mesh(geo, mat);
+    b.position.set(x, h/2, z);
+    scene.add(b);
+  }
+
+  for (let i = 0; i < 50; i++) {
+    let x = (Math.random() - 0.5) * 800;
+    let z = (Math.random() - 0.5) * 800;
+    let h = 40 + Math.random() * 120;
+    if (Math.abs(z) > 60) createBuilding(x, z, h); // keep clear of river
+  }
+
+  // Controls
+  const controls = new THREE.PointerLockControls(camera, document.body);
+  document.body.addEventListener('click', () => controls.lock());
+
+  const velocity = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const move = {forward: false, back: false, left: false, right: false};
+
+  document.addEventListener('keydown', e => {
+    switch (e.code) {
+      case 'KeyW': move.forward = true; break;
+      case 'KeyS': move.back = true; break;
+      case 'KeyA': move.left = true; break;
+      case 'KeyD': move.right = true; break;
+    }
+  });
+  document.addEventListener('keyup', e => {
+    switch (e.code) {
+      case 'KeyW': move.forward = false; break;
+      case 'KeyS': move.back = false; break;
+      case 'KeyA': move.left = false; break;
+      case 'KeyD': move.right = false; break;
+    }
+  });
+
+  camera.position.y = 10; // eye level
+
+  // Animate
+  const clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
+
+    direction.z = Number(move.forward) - Number(move.back);
+    direction.x = Number(move.right) - Number(move.left);
+    direction.normalize();
+
+    if (move.forward || move.back) velocity.z -= direction.z * 400.0 * delta;
+    if (move.left || move.right) velocity.x -= direction.x * 400.0 * delta;
+
+    controls.moveRight(-velocity.x * delta);
+    controls.moveForward(-velocity.z * delta);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>
