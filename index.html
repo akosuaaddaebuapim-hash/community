@@ -2,139 +2,122 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>3D Walkable Community</title>
+  <title>Skybox AI Scene Viewer</title>
   <style>
-    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+    body { margin: 0; overflow: hidden; }
     canvas { display: block; }
     #instructions {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0,0,0,0.7);
       color: white;
       display: flex;
-      align-items: center;
       justify-content: center;
-      flex-direction: column;
-      font-size: 20px;
+      align-items: center;
+      font-size: 24px;
       cursor: pointer;
+      text-align: center;
     }
-    #instructions p { margin: 10px 0; }
   </style>
 </head>
 <body>
 <div id="instructions">
-  <h1>🏙️ 3D Community Test</h1>
-  <p>Click to enter</p>
-  <p>WASD = Move | Mouse = Look</p>
+  Click to enter the 3D scene<br>
+  Use <b>WASD</b> to move, mouse to look around
 </div>
 
-<!-- Three.js and Controls -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-try {
-  // Scene + Renderer
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb); // sky
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // sky color
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
-  const renderer = new THREE.WebGLRenderer({antialias: true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 5000);
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
-  // Lights
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
-  const sun = new THREE.DirectionalLight(0xffffff, 1);
-  sun.position.set(100, 200, 100);
-  scene.add(sun);
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+scene.add(ambientLight);
 
-  // Ground
-  const groundGeo = new THREE.PlaneGeometry(2000, 2000);
-  const groundMat = new THREE.MeshPhongMaterial({color: 0x55aa55});
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  scene.add(ground);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(100, 200, 100);
+scene.add(dirLight);
 
-  // Test Building (so you can SEE something)
-  const testGeo = new THREE.BoxGeometry(50, 100, 50);
-  const testMat = new THREE.MeshPhongMaterial({color: 0xff0000});
-  const testBuilding = new THREE.Mesh(testGeo, testMat);
-  testBuilding.position.set(0, 50, -200);
-  scene.add(testBuilding);
+// Controls
+const controls = new THREE.PointerLockControls(camera, document.body);
+const instructions = document.getElementById('instructions');
+instructions.addEventListener('click', () => controls.lock());
 
-  // River
-  const waterGeo = new THREE.PlaneGeometry(800, 80);
-  const waterMat = new THREE.MeshPhongMaterial({color: 0x3399ff, transparent: true, opacity: 0.8});
-  const water = new THREE.Mesh(waterGeo, waterMat);
-  water.rotation.x = -Math.PI / 2;
-  water.position.set(0, 0.1, 0);
-  scene.add(water);
+controls.addEventListener('lock', () => instructions.style.display = 'none');
+controls.addEventListener('unlock', () => instructions.style.display = 'flex');
 
-  // Controls
-  const controls = new THREE.PointerLockControls(camera, document.body);
-  const instructions = document.getElementById('instructions');
-  instructions.addEventListener('click', () => controls.lock());
+const move = {forward:false, back:false, left:false, right:false};
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
 
-  controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
-  controls.addEventListener('unlock', () => { instructions.style.display = 'flex'; });
+document.addEventListener('keydown', e => {
+  if(e.code==='KeyW') move.forward = true;
+  if(e.code==='KeyS') move.back = true;
+  if(e.code==='KeyA') move.left = true;
+  if(e.code==='KeyD') move.right = true;
+});
+document.addEventListener('keyup', e => {
+  if(e.code==='KeyW') move.forward = false;
+  if(e.code==='KeyS') move.back = false;
+  if(e.code==='KeyA') move.left = false;
+  if(e.code==='KeyD') move.right = false;
+});
 
-  // Movement
-  const velocity = new THREE.Vector3();
-  const direction = new THREE.Vector3();
-  const move = {forward: false, back: false, left: false, right: false};
+// Load your Skybox AI scene
+const loader = new THREE.GLTFLoader();
+loader.load('scene.glb', function(gltf){
+  scene.add(gltf.scene);
+  gltf.scene.position.set(0,0,0); // optional: adjust position
+}, undefined, function(error){ console.error(error); });
 
-  document.addEventListener('keydown', e => {
-    if (e.code === 'KeyW') move.forward = true;
-    if (e.code === 'KeyS') move.back = true;
-    if (e.code === 'KeyA') move.left = true;
-    if (e.code === 'KeyD') move.right = true;
-  });
-  document.addEventListener('keyup', e => {
-    if (e.code === 'KeyW') move.forward = false;
-    if (e.code === 'KeyS') move.back = false;
-    if (e.code === 'KeyA') move.left = false;
-    if (e.code === 'KeyD') move.right = false;
-  });
+// Ground (optional if your scene needs a plane)
+const groundGeo = new THREE.PlaneGeometry(5000,5000);
+const groundMat = new THREE.MeshPhongMaterial({color:0x55aa55});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
 
-  // Camera start position
-  camera.position.set(0, 20, 100);
+// Camera starting position
+camera.position.set(0, 5, 20);
 
-  // Animate
-  const clock = new THREE.Clock();
-  function animate() {
-    requestAnimationFrame(animate);
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const delta = clock.getDelta();
+  
+  velocity.x -= velocity.x * 10.0 * delta;
+  velocity.z -= velocity.z * 10.0 * delta;
 
-    const delta = clock.getDelta();
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
+  direction.z = Number(move.forward)-Number(move.back);
+  direction.x = Number(move.right)-Number(move.left);
+  direction.normalize();
 
-    direction.z = Number(move.forward) - Number(move.back);
-    direction.x = Number(move.right) - Number(move.left);
-    direction.normalize();
+  if(move.forward||move.back) velocity.z -= direction.z * 400.0 * delta;
+  if(move.left||move.right) velocity.x -= direction.x * 400.0 * delta;
 
-    if (move.forward || move.back) velocity.z -= direction.z * 400.0 * delta;
-    if (move.left || move.right) velocity.x -= direction.x * 400.0 * delta;
+  controls.moveRight(-velocity.x * delta);
+  controls.moveForward(-velocity.z * delta);
 
-    controls.moveRight(-velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
-
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  // Handle resize
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-} catch (err) {
-  console.error("⚠️ Error loading scene:", err);
-  document.body.innerHTML = "<h1 style='color:red'>Error loading 3D scene. Open browser console for details.</h1>";
+  renderer.render(scene,camera);
 }
+animate();
+
+// Resize
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
