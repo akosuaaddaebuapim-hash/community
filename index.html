@@ -4,89 +4,102 @@
   <meta charset="UTF-8">
   <title>3D Walkable Community</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
     canvas { display: block; }
+    #instructions {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    #instructions p { margin: 10px 0; }
   </style>
 </head>
 <body>
+<div id="instructions">
+  <h1>🏙️ 3D Community Test</h1>
+  <p>Click to enter</p>
+  <p>WASD = Move | Mouse = Look</p>
+</div>
+
+<!-- Three.js and Controls -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
 
 <script>
-  // Scene setup
+try {
+  // Scene + Renderer
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xaedff7);
+  scene.background = new THREE.Color(0x87ceeb); // sky
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
   const renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
   // Lights
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
   const sun = new THREE.DirectionalLight(0xffffff, 1);
   sun.position.set(100, 200, 100);
   scene.add(sun);
 
-  const ambient = new THREE.AmbientLight(0x404040, 2);
-  scene.add(ambient);
-
   // Ground
-  const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+  const groundGeo = new THREE.PlaneGeometry(2000, 2000);
   const groundMat = new THREE.MeshPhongMaterial({color: 0x55aa55});
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
+  // Test Building (so you can SEE something)
+  const testGeo = new THREE.BoxGeometry(50, 100, 50);
+  const testMat = new THREE.MeshPhongMaterial({color: 0xff0000});
+  const testBuilding = new THREE.Mesh(testGeo, testMat);
+  testBuilding.position.set(0, 50, -200);
+  scene.add(testBuilding);
+
   // River
-  const waterGeo = new THREE.PlaneGeometry(400, 50);
+  const waterGeo = new THREE.PlaneGeometry(800, 80);
   const waterMat = new THREE.MeshPhongMaterial({color: 0x3399ff, transparent: true, opacity: 0.8});
   const water = new THREE.Mesh(waterGeo, waterMat);
   water.rotation.x = -Math.PI / 2;
-  water.position.set(0, 0.05, 0);
+  water.position.set(0, 0.1, 0);
   scene.add(water);
-
-  // Skyscrapers
-  function createBuilding(x, z, h) {
-    const geo = new THREE.BoxGeometry(20, h, 20);
-    const mat = new THREE.MeshPhongMaterial({color: 0xffffff * Math.random()});
-    const b = new THREE.Mesh(geo, mat);
-    b.position.set(x, h/2, z);
-    scene.add(b);
-  }
-
-  for (let i = 0; i < 50; i++) {
-    let x = (Math.random() - 0.5) * 800;
-    let z = (Math.random() - 0.5) * 800;
-    let h = 40 + Math.random() * 120;
-    if (Math.abs(z) > 60) createBuilding(x, z, h); // keep clear of river
-  }
 
   // Controls
   const controls = new THREE.PointerLockControls(camera, document.body);
-  document.body.addEventListener('click', () => controls.lock());
+  const instructions = document.getElementById('instructions');
+  instructions.addEventListener('click', () => controls.lock());
 
+  controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
+  controls.addEventListener('unlock', () => { instructions.style.display = 'flex'; });
+
+  // Movement
   const velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
   const move = {forward: false, back: false, left: false, right: false};
 
   document.addEventListener('keydown', e => {
-    switch (e.code) {
-      case 'KeyW': move.forward = true; break;
-      case 'KeyS': move.back = true; break;
-      case 'KeyA': move.left = true; break;
-      case 'KeyD': move.right = true; break;
-    }
+    if (e.code === 'KeyW') move.forward = true;
+    if (e.code === 'KeyS') move.back = true;
+    if (e.code === 'KeyA') move.left = true;
+    if (e.code === 'KeyD') move.right = true;
   });
   document.addEventListener('keyup', e => {
-    switch (e.code) {
-      case 'KeyW': move.forward = false; break;
-      case 'KeyS': move.back = false; break;
-      case 'KeyA': move.left = false; break;
-      case 'KeyD': move.right = false; break;
-    }
+    if (e.code === 'KeyW') move.forward = false;
+    if (e.code === 'KeyS') move.back = false;
+    if (e.code === 'KeyA') move.left = false;
+    if (e.code === 'KeyD') move.right = false;
   });
 
-  camera.position.y = 10; // eye level
+  // Camera start position
+  camera.position.set(0, 20, 100);
 
   // Animate
   const clock = new THREE.Clock();
@@ -111,11 +124,18 @@
   }
   animate();
 
+  // Handle resize
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
+} catch (err) {
+  console.error("⚠️ Error loading scene:", err);
+  document.body.innerHTML = "<h1 style='color:red'>Error loading 3D scene. Open browser console for details.</h1>";
+}
 </script>
 </body>
 </html>
+
